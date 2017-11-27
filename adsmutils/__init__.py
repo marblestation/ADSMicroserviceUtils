@@ -226,7 +226,8 @@ class ADSFlask(Flask):
         if 'proj_home' in kwargs:
             proj_home = kwargs.pop('proj_home')
         self._config = load_config(extra_frames=1, proj_home=proj_home)
-        proj_home = self._config.get('PROJ_HOME', None)
+        if not proj_home:
+            proj_home = self._config.get('PROJ_HOME', None)
 
         local_config = None
         if 'local_config' in kwargs and kwargs['local_config']:
