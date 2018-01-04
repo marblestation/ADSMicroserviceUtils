@@ -17,6 +17,8 @@ import logging
 import imp
 import sys
 import time
+import json
+import ast
 from dateutil import parser, tz
 from datetime import datetime
 import inspect
@@ -85,7 +87,7 @@ def get_date(timestr=None):
 
 
 
-def load_config(proj_home=None, extra_frames=0):
+def load_config(app_name, proj_home=None, extra_frames=0):
     """
     Loads configuration from config.py and also from local_config.py
 
@@ -116,9 +118,31 @@ def load_config(proj_home=None, extra_frames=0):
 
     conf.update(load_module(os.path.join(proj_home, 'config.py')))
     conf.update(load_module(os.path.join(proj_home, 'local_config.py')))
+    conf_update_from_env(app_name, conf)
 
     return conf
 
+def conf_update_from_env(app_name, conf):
+    for key in conf.keys():
+        specific_app_key = "_".join((app_name.upper(), key))
+        if specific_app_key in os.environ:
+            # Highest priority: variables with app_name as prefix
+            _replace_value(conf, key, os.environ[specific_app_key])
+        elif key in os.environ:
+            _replace_value(conf, key, os.environ[key])
+
+def _replace_value(conf, key, new_value):
+    logging.info("Overwriting constant '%s' old value '%s' with new value '%s' from environment", key, conf[key], new_value)
+    try:
+        w = json.loads(new_value)
+        conf[key] = w
+    except:
+        try:
+            # Interpret numbers, booleans, etc...
+            conf[key] = ast.literal_eval(new_value)
+        except:
+            # String
+            conf[key] = new_value
 
 
 def load_module(filename):
@@ -154,7 +178,7 @@ def setup_logging(name_, level=None, proj_home=None):
     """
 
     if level is None:
-        config = load_config(extra_frames=1, proj_home=proj_home)
+        config = load_config(name_, extra_frames=1, proj_home=proj_home)
         level = config.get('LOGGING_LEVEL', 'INFO')
 
     level = getattr(logging, level)
@@ -225,7 +249,7 @@ class ADSFlask(Flask):
         proj_home = None
         if 'proj_home' in kwargs:
             proj_home = kwargs.pop('proj_home')
-        self._config = load_config(extra_frames=1, proj_home=proj_home)
+        self._config = load_config(app_name, extra_frames=1, proj_home=proj_home)
         if not proj_home:
             proj_home = self._config.get('PROJ_HOME', None)
 
@@ -239,10 +263,10 @@ class ADSFlask(Flask):
         self._logger = setup_logging(app_name, proj_home=proj_home, level=self._config.get('LOGGING_LEVEL', 'INFO'))
 
         self.db = None
-        
+
         if self._config.get('SQLALCHEMY_DATABASE_URI', None):
             self.db = SQLAlchemy(self)
-            
+
 
 
 
