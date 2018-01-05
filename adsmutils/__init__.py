@@ -87,7 +87,7 @@ def get_date(timestr=None):
 
 
 
-def load_config(app_name, proj_home=None, extra_frames=0):
+def load_config(proj_home=None, extra_frames=0, app_name=None):
     """
     Loads configuration from config.py and also from local_config.py
 
@@ -118,7 +118,7 @@ def load_config(app_name, proj_home=None, extra_frames=0):
 
     conf.update(load_module(os.path.join(proj_home, 'config.py')))
     conf.update(load_module(os.path.join(proj_home, 'local_config.py')))
-    conf_update_from_env(app_name, conf)
+    conf_update_from_env(app_name or conf.get('SERVICE', ''), conf)
 
     return conf
 
@@ -178,7 +178,7 @@ def setup_logging(name_, level=None, proj_home=None):
     """
 
     if level is None:
-        config = load_config(name_, extra_frames=1, proj_home=proj_home)
+        config = load_config(extra_frames=1, proj_home=proj_home, app_name=name_)
         level = config.get('LOGGING_LEVEL', 'INFO')
 
     level = getattr(logging, level)
@@ -249,7 +249,7 @@ class ADSFlask(Flask):
         proj_home = None
         if 'proj_home' in kwargs:
             proj_home = kwargs.pop('proj_home')
-        self._config = load_config(app_name, extra_frames=1, proj_home=proj_home)
+        self._config = load_config(extra_frames=1, proj_home=proj_home, app_name=app_name)
         if not proj_home:
             proj_home = self._config.get('PROJ_HOME', None)
 

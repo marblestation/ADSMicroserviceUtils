@@ -26,8 +26,7 @@ class TestAdsUtils(unittest.TestCase):
 
     def test_load_config(self):
         with patch('adsmutils.load_module') as load_module:
-            app_name = "TEST"
-            c = adsmutils.load_config(app_name)
+            c = adsmutils.load_config()
             f = os.path.abspath(os.path.join(os.path.dirname(inspect.getsourcefile(adsmutils)), '..'))
             self.assertEquals((f + '/config.py',),
                               load_module.call_args_list[0][0])
@@ -36,8 +35,7 @@ class TestAdsUtils(unittest.TestCase):
             self.assertEqual(c['PROJ_HOME'], f)
 
         with patch('adsmutils.load_module') as load_module:
-            app_name = "TEST"
-            adsmutils.load_config(app_name, '/tmp')
+            adsmutils.load_config('/tmp')
             self.assertEquals(('/tmp/config.py',),
                               load_module.call_args_list[0][0])
             self.assertEquals(('/tmp/local_config.py',),
