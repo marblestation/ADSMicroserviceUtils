@@ -123,8 +123,9 @@ def load_config(proj_home=None, extra_frames=0, app_name=None):
     return conf
 
 def conf_update_from_env(app_name, conf):
+    app_name = app_name.replace(".", "_").upper()
     for key in conf.keys():
-        specific_app_key = "_".join((app_name.upper(), key))
+        specific_app_key = "_".join((app_name, key))
         if specific_app_key in os.environ:
             # Highest priority: variables with app_name as prefix
             _replace_value(conf, key, os.environ[specific_app_key])
