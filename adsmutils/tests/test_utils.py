@@ -50,9 +50,9 @@ class TestAdsUtils(unittest.TestCase):
     def test_update_from_env(self):
         os.environ["FOO"] = "2"
         os.environ["BAR"] = "False"
-        os.environ["TEST_BAR"] = "True"
+        os.environ["ADSWS_TEST_BAR"] = "True"
         conf = {'FOO': 1, 'BAR': False}
-        adsmutils.conf_update_from_env("TEST", conf)
+        adsmutils.conf_update_from_env("adsws.test", conf)
         self.assertEquals(conf, {'FOO': 2, 'BAR': True})
 
 
