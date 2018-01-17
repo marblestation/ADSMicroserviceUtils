@@ -184,8 +184,8 @@ def setup_logging(name_, level=None, proj_home=None):
 
     level = getattr(logging, level)
 
-    logfmt = u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s'
-    datefmt = u'%Y-%m-%d %H:%M:%S'
+    logfmt = u'%(asctime)s %(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s'
+    datefmt = u'%Y-%m-%dT%H:%M:%S.%fZ' # ISO 8601
     #formatter = logging.Formatter(fmt=logfmt, datefmt=datefmt)
 
     formatter = MultilineMessagesFormatter(fmt=logfmt, datefmt=datefmt)
@@ -328,3 +328,13 @@ class MultilineMessagesFormatter(logging.Formatter):
             return '\n     '.join(s.split('\n'))
         else:
             return s
+
+    def formatTime(self, record, datefmt=None):
+        """logging uses time.strftime which doesn't understand
+        how to add microsecs. datetime understands that. so we
+        have to work around the old time.strftime here."""
+        if datefmt:
+            datefmt = datefmt.replace('%f', '%03d' % (record.msecs))
+            return logging.Formatter.formatTime(self, record, datefmt)
+        else:
+            return logging.Formatter.formatTime(self, record, datefmt) # default ISO8601

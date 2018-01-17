@@ -3,6 +3,7 @@
 import adsmutils
 import unittest
 import os
+import pdb
 
 def _read_file(fpath):
     with open(fpath, 'r') as fi:
@@ -21,7 +22,7 @@ class TestInit(unittest.TestCase):
         #print foo_log
         self.assertTrue(os.path.exists(foo_log))
         c = _read_file(foo_log)
-        self.assertTrue('test_init.py:19] first' in c)
+        self.assertTrue('test_init.py:20] first' in c)
                     
         # now multiline message
         logger.warn('second\nthird')
@@ -29,7 +30,16 @@ class TestInit(unittest.TestCase):
         c = _read_file(foo_log)
         #print c
         self.assertTrue('second\n     third' in c)
-        
+
+        msecs = False
+        for x in c.strip().split('\n'):
+            datestr = x.split(' ')[0]
+            if datestr != '':
+                t = adsmutils.get_date(datestr)
+            if t.microsecond > 0:
+                msecs = True
+
+        self.assertTrue(msecs)
 
 if __name__ == '__main__':
     unittest.main()
