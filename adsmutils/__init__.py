@@ -255,9 +255,10 @@ class ADSFlask(Flask):
             proj_home = self._config.get('PROJ_HOME', None)
 
         local_config = None
-        if 'local_config' in kwargs and kwargs['local_config']:
+        if 'local_config' in kwargs:
             local_config = kwargs.pop('local_config')
-            self._config.update(local_config) #our config
+            if local_config:
+                self._config.update(local_config) #our config
 
         Flask.__init__(self, app_name, *args, **kwargs)
         self.config.update(self._config)
