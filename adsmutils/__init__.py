@@ -11,12 +11,12 @@ from sqlalchemy.orm import load_only as _load_only
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from flask_sqlalchemy import SQLAlchemy
-import sys
 import os
 import logging
 import imp
 import sys
 import time
+import socket
 import json
 import ast
 from dateutil import parser, tz
@@ -24,10 +24,13 @@ from datetime import datetime
 import inspect
 from cloghandler import ConcurrentRotatingFileHandler
 from flask import Flask
+from pythonjsonlogger import jsonlogger
+from logging import Formatter
 
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
 
+TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 def _get_proj_home(extra_frames=0):
     """Get the location of the caller module; then go up max_levels until
@@ -166,7 +169,7 @@ def load_module(filename):
     return res
 
 
-def setup_logging(name_, level=None, proj_home=None):
+def setup_logging(name_, level=None, proj_home=None, attach_stdout=False):
     """
     Sets up generic logging to file with rotating files on disk
 
@@ -215,6 +218,10 @@ def setup_logging(name_, level=None, proj_home=None):
     logging_instance.addHandler(rfh)
     logging_instance.setLevel(level)
 
+    if attach_stdout:
+        stdout = logging.StreamHandler(sys.stdout)
+        logging_instance.addHandler(stdout)
+
     return logging_instance
 
 
@@ -262,7 +269,9 @@ class ADSFlask(Flask):
 
         Flask.__init__(self, app_name, *args, **kwargs)
         self.config.update(self._config)
-        self._logger = setup_logging(app_name, proj_home=proj_home, level=self._config.get('LOGGING_LEVEL', 'INFO'))
+        self._logger = setup_logging(app_name, proj_home=proj_home,
+                                     level=self._config.get('LOGGING_LEVEL', 'INFO'),
+                                     attach_stdout=self._config.get('LOG_STDOUT'))
 
         self.db = None
 
@@ -339,3 +348,52 @@ class MultilineMessagesFormatter(logging.Formatter):
             return logging.Formatter.formatTime(self, record, datefmt)
         else:
             return logging.Formatter.formatTime(self, record, datefmt) # default ISO8601
+
+
+
+class JsonFormatter(jsonlogger.JsonFormatter, object):
+    converter = time.gmtime
+
+    def __init__(self,
+                 fmt="%(asctime) %(name) %(processName) %(filename)  %(funcName) %(levelname) %(lineno) %(module) %(threadName) %(message)",
+                 datefmt=TIMESTAMP_FMT,
+                 extra={}, *args, **kwargs):
+        self._extra = extra
+        jsonlogger.JsonFormatter.__init__(self, fmt=fmt, datefmt=datefmt, *args, **kwargs)
+
+    def process_log_record(self, log_record):
+        # Enforce the presence of a timestamp
+        if "asctime" in log_record:
+            log_record["timestamp"] = log_record["asctime"]
+        else:
+            log_record["timestamp"] = datetime.datetime.utcnow().strftime(TIMESTAMP_FMT)
+
+        if self._extra is not None:
+            for key, value in self._extra.items():
+                log_record[key] = value
+        return super(JsonFormatter, self).process_log_record(log_record)
+
+    def formatException(self, ei):
+        if ei and not isinstance(ei, tuple):
+            ei = sys.exc_info()
+        r = jsonlogger.JsonFormatter.formatException(self, ei)
+        return r
+
+    def formatTime(self, record, datefmt=None):
+        """logging uses time.strftime which doesn't understand
+        how to add microsecs. datetime understands that. so we
+        have to work around the old time.strftime here."""
+        if datefmt:
+            datefmt = datefmt.replace('%f', '%03d' % (record.msecs))
+            return Formatter.formatTime(self, record, datefmt)
+        else:
+            return Formatter.formatTime(self, record, datefmt)  # default ISO8601
+
+    def format(self, record):
+        return jsonlogger.JsonFormatter.format(self, record)
+
+def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s',
+                       datefmt=TIMESTAMP_FMT):
+    return JsonFormatter(logfmt, datefmt, extra={"hostname": socket.gethostname()})
+
+
