@@ -220,6 +220,7 @@ def setup_logging(name_, level=None, proj_home=None, attach_stdout=False):
 
     if attach_stdout:
         stdout = logging.StreamHandler(sys.stdout)
+        stdout.formatter = get_json_formatter()
         logging_instance.addHandler(stdout)
 
     return logging_instance
