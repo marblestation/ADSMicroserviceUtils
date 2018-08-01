@@ -365,10 +365,12 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
     def add_fields(self, log_record, record, message_dict):
         super(JsonFormatter, self).add_fields(log_record, record, message_dict)
         if flask.has_request_context():
+            # Log key fields that gnunicorn logs too
             log_record["X-Original-Uri"] = flask.request.headers.get('X-Original-Uri', None)
             log_record["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', None)
             log_record["Authorization"] = flask.request.headers.get('Authorization', None)
             log_record["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', None)
+            log_record["cookie"] = "; ".join(["{}={}".format(k, v) for k, v in flask.request.cookies.iteritems()])
 
     def process_log_record(self, log_record):
         # Enforce the presence of a timestamp
@@ -405,15 +407,16 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
 class GunicornJsonFormatter(JsonFormatter, object):
 
     def __init__(self,*args, **kwargs):
-        self._extra = {"hostname": socket.gethostname()}
-        JsonFormatter.__init__(self, *args, **kwargs)
+        internal_kwargs = {"extra": {"hostname": socket.gethostname()}}
+        internal_kwargs.update(kwargs)
+        JsonFormatter.__init__(self, *args, **internal_kwargs)
 
     def add_fields(self, log_record, record, message_dict):
         super(GunicornJsonFormatter, self).add_fields(log_record, record, message_dict)
+        # Log key fields that the flask microservice logs too
         log_record['level'] = record.levelname
         log_record['logger'] = record.name
         log_record['msecs'] = record.msecs
-        log_record['hostname'] = socket.gethostname()
         # Extract JSON message
         try:
             msg = json.loads(record.message)
