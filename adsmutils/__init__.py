@@ -369,8 +369,6 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
             log_record["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', None)
             log_record["Authorization"] = flask.request.headers.get('Authorization', None)
             log_record["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', None)
-        extra = kwargs.setdefault("extra", {})
-        for key in add: extra.setdefault(key, add[key])
 
     def process_log_record(self, log_record):
         # Enforce the presence of a timestamp
@@ -379,7 +377,6 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
         else:
             log_record["timestamp"] = datetime.utcnow().strftime(TIMESTAMP_FMT)
             log_record["asctime"] = log_record["timestamp"]
-
 
         if self._extra is not None:
             for key, value in self._extra.items():
@@ -405,7 +402,43 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
     def format(self, record):
         return jsonlogger.JsonFormatter.format(self, record)
 
-def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(X-Original-Uri) %(X-Original-Forwarded-For) %(Authorization) %(X-Amzn-Trace-Id) %(message)s',
+class GunicornJsonFormatter(JsonFormatter, object):
+
+    def __init__(self,*args, **kwargs):
+        self._extra = {"hostname": socket.gethostname()}
+        JsonFormatter.__init__(self, *args, **kwargs)
+
+    def add_fields(self, log_record, record, message_dict):
+        super(GunicornJsonFormatter, self).add_fields(log_record, record, message_dict)
+        log_record['level'] = record.levelname
+        log_record['logger'] = record.name
+        log_record['msecs'] = record.msecs
+        log_record['hostname'] = socket.gethostname()
+        # Extract JSON message
+        try:
+            msg = json.loads(record.message)
+        except ValueError, e:
+            pass
+        else:
+            leftovers = {}
+            for key, value in msg.iteritems():
+                # Make sure we do not overwrite an existing key
+                # and we do not use "message" since it will be overwritten
+                if key != "message" and key not in log_record:
+                    log_record[key] = value
+                else:
+                    leftovers[key] = value
+            log_record['_leftovers'] = json.dumps(leftovers)
+
+    def process_log_record(self, log_record):
+        if '_leftovers' in log_record:
+            # Remove already extracted JSON message keys and leave only
+            # the keys that could not be extracted (if any)
+            log_record['message'] = log_record['_leftovers']
+            del log_record['_leftovers']
+        return super(GunicornJsonFormatter, self).process_log_record(log_record)
+
+def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s',
                        datefmt=TIMESTAMP_FMT):
     return JsonFormatter(logfmt, datefmt, extra={"hostname": socket.gethostname()})
 
