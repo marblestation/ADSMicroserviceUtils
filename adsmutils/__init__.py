@@ -26,6 +26,7 @@ from cloghandler import ConcurrentRotatingFileHandler
 from flask import Flask
 from pythonjsonlogger import jsonlogger
 from logging import Formatter
+import flask
 
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
@@ -351,7 +352,6 @@ class MultilineMessagesFormatter(logging.Formatter):
             return logging.Formatter.formatTime(self, record, datefmt) # default ISO8601
 
 
-
 class JsonFormatter(jsonlogger.JsonFormatter, object):
     converter = time.gmtime
 
@@ -362,12 +362,24 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
         self._extra = extra
         jsonlogger.JsonFormatter.__init__(self, fmt=fmt, datefmt=datefmt, *args, **kwargs)
 
+    def add_fields(self, log_record, record, message_dict):
+        super(JsonFormatter, self).add_fields(log_record, record, message_dict)
+        if flask.has_request_context():
+            log_record["X-Original-Uri"] = flask.request.headers.get('X-Original-Uri', None)
+            log_record["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', None)
+            log_record["Authorization"] = flask.request.headers.get('Authorization', None)
+            log_record["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', None)
+        extra = kwargs.setdefault("extra", {})
+        for key in add: extra.setdefault(key, add[key])
+
     def process_log_record(self, log_record):
         # Enforce the presence of a timestamp
         if "asctime" in log_record:
             log_record["timestamp"] = log_record["asctime"]
         else:
-            log_record["timestamp"] = datetime.datetime.utcnow().strftime(TIMESTAMP_FMT)
+            log_record["timestamp"] = datetime.utcnow().strftime(TIMESTAMP_FMT)
+            log_record["asctime"] = log_record["timestamp"]
+
 
         if self._extra is not None:
             for key, value in self._extra.items():
@@ -393,7 +405,7 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
     def format(self, record):
         return jsonlogger.JsonFormatter.format(self, record)
 
-def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s',
+def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(X-Original-Uri) %(X-Original-Forwarded-For) %(Authorization) %(X-Amzn-Trace-Id) %(message)s',
                        datefmt=TIMESTAMP_FMT):
     return JsonFormatter(logfmt, datefmt, extra={"hostname": socket.gethostname()})
 
