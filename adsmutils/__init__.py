@@ -27,6 +27,7 @@ from flask import Flask
 from pythonjsonlogger import jsonlogger
 from logging import Formatter
 import flask
+import requests
 
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
@@ -273,15 +274,33 @@ class ADSFlask(Flask):
         self.config.update(self._config)
         self._logger = setup_logging(app_name, proj_home=proj_home,
                                      level=self._config.get('LOGGING_LEVEL', 'INFO'),
-                                     attach_stdout=self._config.get('LOG_STDOUT'))
+                                     attach_stdout=self._config.get('LOG_STDOUT', False))
 
         self.db = None
 
         if self._config.get('SQLALCHEMY_DATABASE_URI', None):
             self.db = SQLAlchemy(self)
 
+        # HTTP connection pool
+        # - The maximum number of retries each connection should attempt: this
+        #   applies only to failed DNS lookups, socket connections and connection timeouts,
+        #   never to requests where data has made it to the server. By default,
+        #   requests does not retry failed connections.
+        # http://docs.python-requests.org/en/latest/api/?highlight=max_retries#requests.adapters.HTTPAdapter
+        self.client = requests.Session()
+        http_adapter = requests.adapters.HTTPAdapter(pool_connections=self._config.get('REQUESTS_POOL_CONNECTIONS', 10), pool_maxsize=self._config.get('REQUESTS_POOL_MAXSIZE', 1000), max_retries=self._config.get('REQUESTS_POOL_RETRIES', 3), pool_block=False)
+        self.client.mount('http://', http_adapter)
+        self.before_request_funcs.setdefault(None, []).append(self._before_request)
 
-
+    def _before_request(self):
+        if flask.has_request_context():
+            # New request will contain also key information from the original request
+            forward_headers = {}
+            forward_headers["X-Original-Uri"] = flask.request.headers.get('X-Original-Uri', "-")
+            forward_headers["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', "-")
+            forward_headers["X-Forwarded-Authorization"] = flask.request.headers.get('X-Forwarded-Authorization', flask.request.headers.get('Authorization', "-"))
+            forward_headers["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', "-")
+            self.client.headers.update(forward_headers)
 
     def _get_callers_module(self):
         frame = inspect.stack()[2]
@@ -366,10 +385,11 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
         super(JsonFormatter, self).add_fields(log_record, record, message_dict)
         if flask.has_request_context():
             # Log key fields that gnunicorn logs too
-            log_record["X-Original-Uri"] = flask.request.headers.get('X-Original-Uri', None)
-            log_record["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', None)
-            log_record["Authorization"] = flask.request.headers.get('Authorization', None)
-            log_record["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', None)
+            log_record["X-Original-Uri"] = flask.request.headers.get('X-Original-Uri', "-")
+            log_record["X-Original-Forwarded-For"] = flask.request.headers.get('X-Original-Forwarded-For', "-")
+            log_record["X-Forwarded-Authorization"] = flask.request.headers.get('X-Forwarded-Authorization', "-")
+            log_record["Authorization"] = flask.request.headers.get('Authorization', "-")
+            log_record["X-Amzn-Trace-Id"] = flask.request.headers.get('X-Amzn-Trace-Id', "-")
             log_record["cookie"] = "; ".join(["{}={}".format(k, v) for k, v in flask.request.cookies.iteritems()])
 
     def process_log_record(self, log_record):
