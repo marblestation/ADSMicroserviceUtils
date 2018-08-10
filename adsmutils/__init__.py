@@ -199,6 +199,7 @@ def setup_logging(name_, level=None, proj_home=None, attach_stdout=False):
 
     formatter.converter = time.gmtime
     logging_instance = logging.getLogger(name_)
+    logging_instance.propagate = False # logging messages are not passed to the handlers of ancestor loggers (i.e., gunicorn)
 
     if proj_home:
         proj_home = os.path.abspath(proj_home)
