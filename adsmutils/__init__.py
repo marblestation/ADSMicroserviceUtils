@@ -32,7 +32,7 @@ import requests
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
 
-TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
+TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S.%f"
 
 def _get_proj_home(extra_frames=0):
     """Get the location of the caller module; then go up max_levels until
@@ -190,7 +190,7 @@ def setup_logging(name_, level=None, proj_home=None, attach_stdout=False):
     level = getattr(logging, level)
 
     logfmt = u'%(asctime)s %(msecs)03d %(levelname)-8s [%(process)d:%(threadName)s:%(filename)s:%(lineno)d] %(message)s'
-    datefmt = u'%Y-%m-%dT%H:%M:%S.%fZ' # ISO 8601
+    datefmt = u'%Y-%m-%dT%H:%M:%S.%f' # ISO 8601
     #formatter = logging.Formatter(fmt=logfmt, datefmt=datefmt)
 
     formatter = MultilineMessagesFormatter(fmt=logfmt, datefmt=datefmt)
