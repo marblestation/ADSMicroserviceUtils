@@ -24,6 +24,7 @@ from datetime import datetime
 import inspect
 from cloghandler import ConcurrentRotatingFileHandler
 from flask import Flask
+from flask import Response
 from pythonjsonlogger import jsonlogger
 from logging import Formatter
 import flask
@@ -293,6 +294,9 @@ class ADSFlask(Flask):
         self.client.mount('http://', http_adapter)
         self.before_request_funcs.setdefault(None, []).append(self._before_request)
 
+        self.add_url_rule('/ready', 'ready', self.ready)
+        self.add_url_rule('/alive', 'alive', self.alive)
+
     def _before_request(self):
         if flask.has_request_context():
             # New request will contain also key information from the original request
@@ -317,6 +321,28 @@ class ADSFlask(Flask):
         """Closes the app"""
         self.db = None
         self.logger = None
+
+    def ready(self, key='ready'):
+        """Endpoint /ready to signal that the application is ready to receive requests"""
+        if self._db_failure():
+            return Response(json.dumps({key: False}), mimetype='application/json', status=503)
+        else:
+            return Response(json.dumps({key: True}), mimetype='application/json', status=200)
+
+    def alive(self):
+        """Endpoint /alive to signal that the application is healthy"""
+        return self.ready(key="alive")
+
+    def _db_failure(self):
+        if self.db is None:
+            return False
+        else:
+            with self.session_scope() as session:
+                try:
+                    session.execute('SELECT 1')
+                    return False
+                except:
+                    return True
 
 
     @contextmanager
