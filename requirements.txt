@@ -2,5 +2,9 @@ ConcurrentLogHandler==0.9.1
 python-dateutil==2.6.0
 DateTime==4.1.1
 SQLAlchemy==1.1.6
+setuptools>=36.5.0
+six>=1.11.0
 Flask-SQLAlchemy==2.2
+setuptools>=36.5.0
 python-json-logger==0.1.8
+requests==2.19.1
