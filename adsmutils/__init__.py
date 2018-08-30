@@ -332,7 +332,7 @@ class ADSFlask(Flask):
             return f
         return decorator
 
-    @advertise(scopes=['execute-query'], rate_limits=[4000, 60*60])
+    @advertise(scopes=['execute-query'], rate_limit=[4000, 60*60])
     def ready(self, key='ready'):
         """Endpoint /ready to signal that the application is ready to receive requests"""
         if self._db_failure():
@@ -340,7 +340,7 @@ class ADSFlask(Flask):
         else:
             return Response(json.dumps({key: True}), mimetype='application/json', status=200)
 
-    @advertise(scopes=['execute-query'], rate_limits=[4000, 60*60])
+    @advertise(scopes=['execute-query'], rate_limit=[4000, 60*60])
     def alive(self):
         """Endpoint /alive to signal that the application is healthy"""
         return self.ready(key="alive")
