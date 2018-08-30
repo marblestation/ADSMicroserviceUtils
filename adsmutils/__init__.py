@@ -27,6 +27,7 @@ from flask import Flask
 from flask import Response
 from pythonjsonlogger import jsonlogger
 from logging import Formatter
+from flask_discoverer import advertise
 import flask
 import requests
 
@@ -321,16 +322,6 @@ class ADSFlask(Flask):
         """Closes the app"""
         self.db = None
         self.logger = None
-
-    def advertise(**kwargs):
-        """Decorator to add scopes and rate limits that are read by flask-discoverer"""
-        def decorator(f):
-            if not hasattr(f,'_advertised'):
-                f.__setattr__('_advertised', [])
-            for key,value in kwargs.iteritems():
-                f._advertised.append({key: value})
-            return f
-        return decorator
 
     @advertise(scopes=['execute-query'], rate_limit=[4000, 60*60])
     def ready(self, key='ready'):
