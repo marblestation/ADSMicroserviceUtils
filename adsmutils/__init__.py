@@ -322,6 +322,17 @@ class ADSFlask(Flask):
         self.db = None
         self.logger = None
 
+    def advertise(**kwargs):
+        """Decorator to add scopes and rate limits that are read by flask-discoverer"""
+        def decorator(f):
+            if not hasattr(f,'_advertised'):
+                f.__setattr__('_advertised', [])
+            for key,value in kwargs.iteritems():
+                f._advertised.append({key: value})
+            return f
+        return decorator
+
+    @advertise(scopes=['execute-query'], rate_limits=[4000, 60*60])
     def ready(self, key='ready'):
         """Endpoint /ready to signal that the application is ready to receive requests"""
         if self._db_failure():
@@ -329,6 +340,7 @@ class ADSFlask(Flask):
         else:
             return Response(json.dumps({key: True}), mimetype='application/json', status=200)
 
+    @advertise(scopes=['execute-query'], rate_limits=[4000, 60*60])
     def alive(self):
         """Endpoint /alive to signal that the application is healthy"""
         return self.ready(key="alive")
