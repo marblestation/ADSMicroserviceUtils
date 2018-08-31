@@ -29,7 +29,19 @@ from pythonjsonlogger import jsonlogger
 from logging import Formatter
 from flask_discoverer import advertise
 import flask
-import requests
+try:
+    # Try to detect if this code is going to be executed by gunicorn using gevent (async workers)
+    # so that we apply the required patches before requests is imported
+    if os.environ.get('GUNICORN_WORKER_CLASS', None) == 'gevent':
+        import gevent.monkey
+        gevent.monkey.patch_all()
+        logging.info("Patched os/time/thread/sys/socket/select/ssl/subprocess/builtins/signal/queue for nonblocking use with gunicorn's gevent workers")
+except ImportError, e:
+    # gevent module does not exist, patch is not applied and this should be fine
+    # because this code will not be run in an async gunicorn worker
+    logging.info("No os/time/thread/sys/socket/select/ssl/subprocess/builtins/signal/queue patch applied for nonblocking use with gunicorn's gevent workers")
+finally:
+    import requests
 
 local_zone = tz.tzlocal()
 utc_zone = tz.tzutc()
