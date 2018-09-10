@@ -321,7 +321,7 @@ class ADSFlask(Flask):
     def close_app(self):
         """Closes the app"""
         self.db = None
-        self.logger = None
+        self._logger = None
         if self.client:
             self.client.close()
 
