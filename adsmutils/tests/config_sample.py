@@ -1,3 +1,3 @@
 
-FOO = {'bar': ['baz', 1]}
+FOO = {u'bar': [u'baz', 1]}
 foo = 'bar'
