@@ -26,17 +26,18 @@ def get_git_version(default="v0.0.1"):
         return default
 
 setup(
-    name='adsmutils',
-    version=get_git_version(default="v0.0.1"),
-    url='https://github.com/adsabs/ADSMicroserviceUtils',
-    license='MIT',
     author="NASA/SAO ADS",
+    name='adsmutils',
+    classifiers=['Programming Language :: Python :: 2.7'],
     description='ADS Microservice Utils',
-    long_description=long_description,
-    packages=find_packages(),
     include_package_data=True,
-    zip_safe=False,
-    platforms='any',
     install_requires=required,
+    license='MIT',
+    long_description=long_description,
+    url='https://github.com/adsabs/ADSMicroserviceUtils',
+    packages=find_packages(),
+    platforms='any',
+    version=get_git_version(default="v0.0.1"),
+    zip_safe=False,
 )
 
