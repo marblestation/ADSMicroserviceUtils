@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from adsmutils import ADSFlask
+from __future__ import absolute_import, unicode_literals, division, print_function
 import unittest
+from adsmutils import ADSFlask
 
 
 class TestUpdateRecords(unittest.TestCase):
 
     def test_config(self):
-        app = ADSFlask('test',local_config={
-            'FOO': ['bar', {}],
-            'SQLALCHEMY_DATABASE_URI': 'sqlite:///',
+        app = ADSFlask(u'test', local_config={
+            u'FOO': [u'bar', {}],
+            u'SQLALCHEMY_DATABASE_URI': u'sqlite:///',
             })
-        self.assertEqual(app._config['FOO'], ['bar', {}])
-        self.assertEqual(app.config['FOO'], ['bar', {}])
+        self.assertEqual(app._config[u'FOO'], [u'bar', {}])
+        self.assertEqual(app.config[u'FOO'], [u'bar', {}])
         self.assertTrue(app.db)
         
 
