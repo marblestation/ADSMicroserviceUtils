@@ -513,8 +513,9 @@ class UTCDateTime(types.TypeDecorator):
     impl = TIMESTAMP(timezone=True)
     
     def process_bind_param(self, value, engine):
-        # when function is called by sqlalchemy it passes engine which we ignored
-        if isinstance(value, basestring):
+        # this function is called by sqlalchemy it passes engine which we ignored
+        # python2/3 compatible str and unicode check
+        if isinstance(value, (type('foo'), type(u'foo'))):
             return get_date(value).astimezone(utc_zone)
         elif value is not None:
             if value.tzname() is None:
