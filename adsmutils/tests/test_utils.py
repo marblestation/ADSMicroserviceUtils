@@ -59,8 +59,10 @@ class TestAdsUtils(unittest.TestCase):
         with patch(u'adsmutils.ConcurrentRotatingFileHandler') as cloghandler:
             adsmutils.setup_logging(u'app')
             f = os.path.abspath(os.path.join(os.path.abspath(__file__), u'../../..'))
-            self.assertEqual(u"call(backupCount=10, encoding=u'UTF-8', filename=u'{filename}/logs/app.log', maxBytes=10485760, mode=u'a')".format(filename=f),
-                             str(cloghandler.call_args))
+            tmp = str(cloghandler.call_args)
+            tmp = tmp.replace("=u'", "='")   # remove unicode annotations in python 2
+            self.assertEqual("call(backupCount=10, encoding='UTF-8', filename='{filename}/logs/app.log', maxBytes=10485760, mode='a')".format(filename=f),
+                             tmp)
 
 
     def test_get_date(self):
