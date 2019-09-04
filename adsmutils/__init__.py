@@ -16,6 +16,7 @@ import os
 import socket
 import sys
 import time
+import six
 from datetime import datetime
 from dateutil import parser, tz
 
@@ -230,7 +231,7 @@ def setup_logging(name_, level=None, proj_home=None, attach_stdout=False):
 
 
 def from_object(from_obj, to_obj):
-    """Updates the values from the given object.  
+    """Updates the values from the given object.
     The object's type can be either modules or classes.
     Just the uppercase variables in that object are stored in the config.
 
@@ -417,7 +418,7 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
             log_record[u'X-Forwarded-Authorization'] = flask.request.headers.get(u'X-Forwarded-Authorization', u'-')
             log_record[u'Authorization'] = flask.request.headers.get(u'Authorization', u'-')
             log_record[u'X-Amzn-Trace-Id'] = flask.request.headers.get(u'X-Amzn-Trace-Id', u'-')
-            log_record[u'cookie'] = u'; '.join([u'{}={}'.format(k, v) for k, v in flask.request.cookies.iteritems()])
+            log_record[u'cookie'] = u'; '.join([u'{}={}'.format(k, v) for k, v in six.iteritems(flask.request.cookies)])
 
     def process_log_record(self, log_record):
         # Enforce the presence of a timestamp
@@ -451,13 +452,19 @@ class JsonFormatter(jsonlogger.JsonFormatter, object):
     def format(self, record):
         return jsonlogger.JsonFormatter.format(self, record)
 
-    
+
 class GunicornJsonFormatter(JsonFormatter, object):
 
     def __init__(self, *args, **kwargs):
         internal_kwargs = {u'extra': {u'hostname': socket.gethostname()}}
         internal_kwargs.update(kwargs)
-        JsonFormatter.__init__(self, *args, **internal_kwargs)
+        if len(args) >= 2:
+            internal_kwargs['fmt'] = args[0]
+            internal_kwargs['datefmt'] = args[1]
+        # Gunicorn3 provides an additional argument that is not accepted by JsonFormatter
+        #if len(args) >= 3:
+            #internal_kwargs['style'] = args[2]
+        JsonFormatter.__init__(self, **internal_kwargs)
 
     def add_fields(self, log_record, record, message_dict):
         super(GunicornJsonFormatter, self).add_fields(log_record, record, message_dict)
@@ -472,7 +479,7 @@ class GunicornJsonFormatter(JsonFormatter, object):
             pass
         else:
             leftovers = {}
-            for key, value in msg.iteritems():
+            for key, value in six.iteritems(msg):
                 # Make sure we do not overwrite an existing key
                 # and we do not use "message" since it will be overwritten
                 if key != u'message' and key not in log_record:
@@ -497,21 +504,21 @@ def get_json_formatter(logfmt=u'%(asctime)s,%(msecs)03d %(levelname)-8s [%(proce
 class UTCDateTime(types.TypeDecorator):
     """Value type for SQLAlachemy to be used for UTC datetime
     example usage (in your models.py)
-    
+
     from sqlalchemy.ext.declarative import declarative_base
     from adsmutils import get_date, UTCDateTime
     Base = declarative_base()
-    
+
     class Foo(Base):
         __tablename__ = 'foo'
         id = Column(Integer, primary_key=True)
         created = Column(UTCDateTime, default=get_date)
         updated = Column(UTCDateTime)
-    
+
     """
-    
+
     impl = TIMESTAMP(timezone=True)
-    
+
     def process_bind_param(self, value, engine):
         # this function is called by sqlalchemy it passes engine which we ignored
         # python2/3 compatible str and unicode check
