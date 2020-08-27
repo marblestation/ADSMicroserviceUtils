@@ -301,7 +301,6 @@ class ADSFlask(Flask):
             forward_headers[u'X-Original-Uri'] = flask.request.headers.get(u'X-Original-Uri', u'-')
             forward_headers[u'X-Original-Forwarded-For'] = flask.request.headers.get(u'X-Original-Forwarded-For', u'-')
             forward_headers[u'X-Forwarded-For'] = flask.request.headers.get(u'X-Forwarded-For', u'-')
-            forward_headers[u'X-Forwarded-Authorization'] = flask.request.headers.get(u'X-Forwarded-Authorization', flask.request.headers.get(u'Authorization', u'-'))
             forward_headers[u'X-Amzn-Trace-Id'] = flask.request.headers.get(u'X-Amzn-Trace-Id', '-')
             self.client.headers.update(forward_headers)
 
